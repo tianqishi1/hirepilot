@@ -1,0 +1,89 @@
+{
+ "n": 10,
+ "accuracy": 1.0,
+ "hard_filter_leaks": 0,
+ "score_mae": 5.2,
+ "llm": "mock",
+ "details": [
+  {
+   "id": "c001",
+   "name": "陈昊",
+   "score": 94,
+   "pred": true,
+   "label": true,
+   "hit": true
+  },
+  {
+   "id": "c002",
+   "name": "林晓雨",
+   "score": 84,
+   "pred": true,
+   "label": true,
+   "hit": true
+  },
+  {
+   "id": "c003",
+   "name": "王志强",
+   "score": 84,
+   "pred": true,
+   "label": true,
+   "hit": true
+  },
+  {
+   "id": "c004",
+   "name": "赵敏",
+   "score": 51,
+   "pred": false,
+   "label": false,
+   "hit": true
+  },
+  {
+   "id": "c005",
+   "name": "李强",
+   "score": 32,
+   "pred": false,
+   "label": false,
+   "hit": true
+  },
+  {
+   "id": "c006",
+   "name": "孙丽",
+   "score": 52,
+   "pred": false,
+   "label": false,
+   "hit": true
+  },
+  {
+   "id": "c007",
+   "name": "周涛",
+   "score": 86,
+   "pred": true,
+   "label": true,
+   "hit": true
+  },
+  {
+   "id": "c008",
+   "name": "吴倩",
+   "score": 72,
+   "pred": true,
+   "label": true,
+   "hit": true
+  },
+  {
+   "id": "c009",
+   "name": "郑凯",
+   "score": 84,
+   "pred": true,
+   "label": true,
+   "hit": true
+  },
+  {
+   "id": "c010",
+   "name": "何静",
+   "score": 45,
+   "pred": false,
+   "label": false,
+   "hit": true
+  }
+ ]
+}

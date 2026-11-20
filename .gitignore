@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+worker/out/
+backend/target/
+backend/build.log
+.env
