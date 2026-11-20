@@ -52,6 +52,8 @@ Spring Boot 3 (:8080)  <-REST->  Python Agent Worker  <-Playwright->  Mock 招�
     $env:LLM_MODEL="qwen-plus"; $env:VLM_MODEL="qwen-vl-max"   # VLM 用于视觉降级路线
 
 无 Key 时自动使用确定性 MockLLM；API 调用失败逐次降级 Mock，流程不中断。
+密钥写入项目根 .env（已 gitignore）。注意：百炼 Token Plan/Coding Plan 密钥按官方条款仅限
+Claude Code/Codex 等 AI 工具交互式使用，不能用于后端服务；生产部署请换按量付费 API Key。
 
 ### 5. 评测回归
     python worker/eval/run_eval.py    # shortlist 准确率 / 硬条件误放行(红线=0) / 分数MAE

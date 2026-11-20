@@ -4,6 +4,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "out"
+
+
+def _load_dotenv():
+    """从项目根 .env 读取配置（已 gitignore，密钥不入库）。"""
+    p = ROOT.parent / ".env"
+    if p.exists():
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
 INCIDENTS = OUT / "incidents"
 OUT.mkdir(exist_ok=True)
 INCIDENTS.mkdir(exist_ok=True)
