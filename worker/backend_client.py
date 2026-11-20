@@ -76,6 +76,8 @@ class BackendClient:
     def escalate(self, cid): self.http.post(f"/api/worker/escalate/{cid}").raise_for_status()
     def incident(self, task_id, kind, detail, shot=""):
         self.http.post("/api/worker/incidents", json={"taskRunId": task_id, "kind": kind, "detail": detail, "screenshotPath": shot}).raise_for_status()
+    def reset(self, job_id):
+        self.http.post("/api/dev/reset", params={"jobId": job_id}).raise_for_status()
 
 
 class LocalStore:
@@ -164,6 +166,10 @@ class LocalStore:
     def escalate(self, cid): self.set_status(cid, "ESCALATED")
     def incident(self, task_id, kind, detail, shot=""):
         self.incidents.append({"kind": kind, "detail": detail, "screenshot": shot})
+        self._save()
+    def reset(self, job_id):
+        self.cands, self.reviews, self.messages, self.incidents = {}, [], {}, []
+        self._next_id = 1
         self._save()
 
 

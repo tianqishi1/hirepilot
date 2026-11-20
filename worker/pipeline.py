@@ -10,7 +10,7 @@ from stability import StepFailure, idem_key, throttle
 def new_stats() -> dict:
     return {"discovered": 0, "hard_rejected": 0, "score_rejected": 0, "reviews": 0,
             "greeted": 0, "replies": 0, "faq_answered": 0, "interest": 0, "escalated": 0,
-            "failures": 0, "print_fallbacks": 0, "visual_fallbacks": 0, "send_retries": 0,
+            "failures": 0, "skipped_existing": 0, "print_fallbacks": 0, "visual_fallbacks": 0, "send_retries": 0,
             "llm_fallbacks": 0}
 
 
@@ -34,9 +34,18 @@ def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
     reject_line = job["rubric"].get("rejectLine", 60)
 
     # ---- Phase 1: 发现 + 评估 ----
+    # 后台已处理过的候选人直接跳过（状态机护栏的前置检查，避免重复评估/重复送审）
+    done_statuses = {"REJECTED", "PENDING_REVIEW", "APPROVED", "GREETED", "CHATTING",
+                     "INTERVIEW", "ESCALATED", "CLOSED"}
+    existing = {c["externalId"]: c["status"] for c in store.list_candidates(
+        job_id, ["DISCOVERED", "SCORED"] + sorted(done_statuses))}
     for item in browser.discover(MOCK_URL, MAX_PAGES):
         ext = item["externalId"]
         if ckpt.seen(ext):
+            continue
+        if existing.get(ext) in done_statuses:
+            stats["skipped_existing"] += 1
+            ckpt.mark(ext)
             continue
         stats["discovered"] += 1
         try:

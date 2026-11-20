@@ -58,6 +58,13 @@ Claude Code/Codex 等 AI 工具交互式使用，不能用于后端服务；生�
 ### 5. 评测回归
     python worker/eval/run_eval.py    # shortlist 准确率 / 硬条件误放行(红线=0) / 分数MAE
 
+### 6. 重开一局
+
+    Invoke-RestMethod -Method Post http://127.0.0.1:9000/api/reset   # 清Mock站聊天记录
+    python worker/main.py --job 1 --fresh --reset                   # 清后台数据+断点，从头跑
+
+--fresh 只清 Worker 本地断点；--reset 才清后台候选人/审核/消息（开发端点 /api/dev/reset，生产应禁用）。
+后台已处理过的候选人自动跳过（skipped_existing），不会重复送审触发 409。
 ## 已验证的稳定性特性（E2E 实测）
 
 | 特性 | 验证方式 | 结果 |

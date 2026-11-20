@@ -26,6 +26,7 @@ def main():
     ap.add_argument("--worker-id", default="worker-1")
     ap.add_argument("--fresh", action="store_true", help="清除断点，从头跑")
     ap.add_argument("--standalone", action="store_true", help="强制本地模式，不连后台")
+    ap.add_argument("--reset", action="store_true", help="重开一局：清空后台该职位数据(开发用)")
     args = ap.parse_args()
 
     if args.standalone:
@@ -34,6 +35,9 @@ def main():
         print("[store] 强制 standalone 模式")
     else:
         store = build_store(auto_approve=args.auto_approve)
+    if args.reset:
+        store.reset(args.job)
+        print("[main] 已重置职位数据（开发模式）")
     job = store.get_job(args.job)
     llm = build_llm()
     ckpt = Checkpoint(str(args.job))
