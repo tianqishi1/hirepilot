@@ -19,16 +19,20 @@ def _vlm(image_png: bytes, prompt: str) -> str:
     if not LLM_API_KEY:
         raise VisualUnavailable("未配置 LLM_API_KEY，视觉路线不可用")
     b64 = base64.b64encode(image_png).decode()
-    r = httpx.post(
-        f"{LLM_BASE_URL}/chat/completions",
-        headers={"Authorization": f"Bearer {LLM_API_KEY}"},
-        timeout=90,
-        json={"model": VLM_MODEL, "temperature": 0, "messages": [{
-            "role": "user", "content": [
-                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
-                {"type": "text", "text": prompt}]}]})
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+    try:
+        r = httpx.post(
+            f"{LLM_BASE_URL}/chat/completions",
+            headers={"Authorization": f"Bearer {LLM_API_KEY}"},
+            timeout=90,
+            json={"model": VLM_MODEL, "temperature": 0, "thinking": {"type": "disabled"},
+                  "messages": [{
+                      "role": "user", "content": [
+                          {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                          {"type": "text", "text": prompt}]}]})
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        raise VisualUnavailable(f"VLM 调用失败: {e.__class__.__name__}: {str(e)[:120]}")
 
 
 def read_screen(page) -> str:

@@ -35,13 +35,32 @@ def main():
                         "label": r["shortlist"], "hit": hit})
         print(f"{'OK ' if hit else 'MISS'} {r['id']} {p.get('name')}: score={s} pred={pred} label={r['shortlist']}")
     n = len(rows)
+    intent_cases = [
+        ("请问这个岗位的薪资范围大概是多少？", "FAQ"),
+        ("远程办公是全职远程吗？还是需要坐班？", "FAQ"),
+        ("这个岗位需要出差吗？", "FAQ"),
+        ("你们主要用什么技术栈？", "FAQ"),
+        ("请问团队规模多大？向谁汇报？", "FAQ"),
+        ("我目前期望薪资35K以上，低于这个数就不用聊了，能满足吗？", "SENSITIVE"),
+        ("可以，约个时间面试吧。", "INTEREST"),
+        ("听起来不错，可以再聊聊。", "INTEREST"),
+        ("好的，我稍后发一份最新简历给你。", "INTEREST"),
+        ("你是机器人吧", "OTHER"),
+    ]
+    intent_hit = 0
+    for text, label in intent_cases:
+        got = llm.classify(text)
+        intent_hit += got == label
+        print(f"{'OK ' if got == label else 'MISS'} intent: {text[:24]} -> {got} (期望 {label})")
+    intent_acc = round(intent_hit / len(intent_cases), 3)
     report = {"n": n, "accuracy": round(correct / n, 3), "hard_filter_leaks": leaks,
-              "score_mae": round(sum(aes) / n, 1), "llm": llm.name, "details": details}
+              "score_mae": round(sum(aes) / n, 1), "intent_accuracy": intent_acc,
+              "llm": llm.name, "details": details}
     out = HERE / "last_report.json"
     out.write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"\n准确率 {report['accuracy']:.0%} | 硬条件误放行 {leaks} (红线=0) | 分数MAE {report['score_mae']}")
+    print(f"\n准确率 {report['accuracy']:.0%} | 硬条件误放行 {leaks} (红线=0) | 分数MAE {report['score_mae']} | 意图准确率 {intent_acc:.0%}")
     print(f"报告: {out}")
-    if leaks > 0 or report["accuracy"] < 0.8:
+    if leaks > 0 or report["accuracy"] < 0.8 or intent_acc < 0.8:
         sys.exit(1)
 
 

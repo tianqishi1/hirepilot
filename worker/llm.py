@@ -97,7 +97,7 @@ class ApiLLM(MockLLM):
 
     def _chat(self, system: str, user: str) -> str:
         r = self.client.post("/chat/completions", json={
-            "model": LLM_MODEL, "temperature": 0,
+            "model": LLM_MODEL, "temperature": 0, "thinking": {"type": "disabled"},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]})
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"]
@@ -135,14 +135,20 @@ class ApiLLM(MockLLM):
 
     def classify(self, text: str) -> str:
         def call():
-            out = self._chat("对候选人消息分类，只输出一个词: FAQ(常见问题)/INTEREST(表达意向或约面)/SENSITIVE(谈薪施压、投诉、合同等需人工)/OTHER。", text)
+            out = self._chat(
+                "对候选人消息分类，只输出一个词。定义：\n"
+                "FAQ=询问职位客观信息（薪资范围、工作地点、远程政策、技术栈、团队规模、出差、加班、福利等），属正常沟通前问答；\n"
+                "INTEREST=表达积极意向、同意面试、约时间、愿意发简历或进一步沟通；\n"
+                "SENSITIVE=候选人提出自身薪资要求并施压/下最后通牒、投诉、合同条款争议等需人工决策；\n"
+                "OTHER=闲聊或无关内容。\n"
+                "注意：仅询问薪资范围是FAQ；只有候选人索要薪资承诺并施压才是SENSITIVE。", text)
             label = out.strip().upper()
             return label if label in {"FAQ", "INTEREST", "SENSITIVE", "OTHER"} else "OTHER"
         return self._safe(call, super().classify, text)
 
     def answer(self, question: str, faq: dict, job: dict) -> str | None:
         def call():
-            sys = ("你是招聘助理。仅依据 FAQ 知识库回答候选人问题，≤80字，不得编造承诺；知识库覆盖不了就只输出 ESCALATE。"
+            sys = ("你是招聘助理。仅依据 FAQ 知识库（含薪资/地点/远程/工时/技术栈/团队/出差等条目）回答候选人问题，≤80字，不得编造知识库外的承诺；确实覆盖不了才只输出 ESCALATE。"
                    f"回答结尾附：{AUTO_DECL}")
             out = self._chat(sys, json.dumps({"faq": faq, "question": question}, ensure_ascii=False)).strip()
             return None if "ESCALATE" in out else out

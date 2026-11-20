@@ -25,7 +25,7 @@ public class HirepilotApplication {
                 {"weights": {"skill": 40, "experience": 30, "education": 20, "stability": 10}, "rejectLine": 60}
                 """;
             j.faq = """
-                {"薪资范围": "20-30K，14薪，具体面议", "工作地点": "杭州滨江区，支持全职远程办公", "远程政策": "全职远程，每季度一次线下团建", "工时制度": "弹性工作制，双休"}
+                {"薪资范围": "20-30K，14薪，具体面议", "工作地点": "杭州滨江区，支持全职远程办公", "远程政策": "全职远程，每季度一次线下团建", "工时制度": "弹性工作制，双休", "技术栈": "Java/Spring Boot + PostgreSQL，自动化侧 Python/Playwright", "团队": "团队约10人，该岗位直接汇报给研发负责人", "出差": "无需出差，支持全职远程"}
                 """;
             j.greetingStyle = "专业、简洁、突出候选人亮点，不超过120字";
             j.dailyLimit = 20;

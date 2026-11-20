@@ -98,8 +98,8 @@ def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
             if m["dir"] != "in":
                 continue
             stats["replies"] += 1
-            store.message(c["id"], "IN", m["content"], idem_key(c["externalId"], str(cursor), m["content"]))
             intent = llm.classify(m["content"])
+            store.message(c["id"], "IN", m["content"], idem_key(c["externalId"], str(cursor), m["content"]), intent)
             print(f"[chat] {c['name']}: {m['content'][:30]} → {intent}")
             if intent == "FAQ":
                 ans = llm.answer(m["content"], job.get("faq", {}), job)
