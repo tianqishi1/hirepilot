@@ -1,17 +1,30 @@
 # -*- coding: utf-8 -*-
-"""Agent 执行循环：发现→抽取→硬条件规则→LLM评分→审核→触达→意图应答/转人工。"""
+"""Agent 执行循环：发现→抽取→硬条件规则→LLM评分→审核→触达→意图应答/转人工。
+拆为 screen_phase(筛选) 与 engage_phase(触达+应答)，供 CLI 与 --serve/UI 按钮分别调用。
+"""
 import json
 
 from config import GREET_DELAY_RANGE, MOCK_URL, MAX_PAGES
 from llm import DEGREE_RANK, AUTO_DECL
 from stability import StepFailure, idem_key, throttle
 
+DONE_STATUSES = {"REJECTED", "PENDING_REVIEW", "APPROVED", "GREETED", "CHATTING",
+                 "INTERVIEW", "ESCALATED", "CLOSED"}
+
 
 def new_stats() -> dict:
     return {"discovered": 0, "hard_rejected": 0, "score_rejected": 0, "reviews": 0,
             "greeted": 0, "replies": 0, "faq_answered": 0, "interest": 0, "escalated": 0,
-            "failures": 0, "skipped_existing": 0, "print_fallbacks": 0, "visual_fallbacks": 0, "send_retries": 0,
-            "llm_fallbacks": 0}
+            "failures": 0, "skipped_existing": 0, "print_fallbacks": 0, "visual_fallbacks": 0,
+            "send_retries": 0, "llm_fallbacks": 0}
+
+
+def merge_stats(stats, browser, llm):
+    stats["print_fallbacks"] = browser.stats["print_fallbacks"]
+    stats["visual_fallbacks"] = browser.stats["visual_fallbacks"]
+    stats["send_retries"] = browser.stats["send_retries"]
+    stats["llm_fallbacks"] = getattr(llm, "fallbacks", 0)
+    return stats
 
 
 def hard_check(profile: dict, hf: dict) -> tuple[bool, list[str]]:
@@ -29,21 +42,20 @@ def hard_check(profile: dict, hf: dict) -> tuple[bool, list[str]]:
     return (not reasons), reasons
 
 
-def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
+def screen_phase(job, llm, browser, store, ckpt, stats, task_id):
+    """阶段1：发现 + 评估 + 送审。"""
     job_id = job["id"]
     reject_line = job["rubric"].get("rejectLine", 60)
-
-    # ---- Phase 1: 发现 + 评估 ----
-    # 后台已处理过的候选人直接跳过（状态机护栏的前置检查，避免重复评估/重复送审）
-    done_statuses = {"REJECTED", "PENDING_REVIEW", "APPROVED", "GREETED", "CHATTING",
-                     "INTERVIEW", "ESCALATED", "CLOSED"}
-    existing = {c["externalId"]: c["status"] for c in store.list_candidates(
-        job_id, ["DISCOVERED", "SCORED"] + sorted(done_statuses))}
+    existing_list = store.list_candidates(job_id, ["DISCOVERED", "SCORED"] + sorted(DONE_STATUSES))
+    if not existing_list:
+        # 后台为空 = 新一局：本地断点可能过期（后台被重置过），清掉重来
+        ckpt.data = {"seen": [], "msg_cursor": {}}
+        ckpt.save()
+    existing = {c["externalId"]: c["status"] for c in existing_list}
     for item in browser.discover(MOCK_URL, MAX_PAGES):
         ext = item["externalId"]
-        if ckpt.seen(ext):
-            continue
-        if existing.get(ext) in done_statuses:
+        # 以后台状态为唯一事实源；本地 seen 不再用于跳过（防后台重置后不同步）
+        if existing.get(ext) in DONE_STATUSES:
             stats["skipped_existing"] += 1
             ckpt.mark(ext)
             continue
@@ -78,7 +90,10 @@ def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
         ckpt.mark(ext)
         throttle(0.2, 0.5)
 
-    # ---- Phase 2: 执行已批准触达 ----
+
+def engage_phase(job, llm, browser, store, ckpt, stats, task_id):
+    """阶段2+3：执行已批准触达 + 收回复意图应答/转人工。"""
+    job_id = job["id"]
     approved = store.approved(job_id)[: job.get("dailyLimit", 20)]
     for entry in approved:
         c, msg = entry["candidate"], entry["message"]
@@ -93,7 +108,6 @@ def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
             store.incident(task_id, e.step, e.detail, e.screenshot)
         throttle(*GREET_DELAY_RANGE)
 
-    # ---- Phase 3: 收回复 → 意图 → 应答/转人工 ----
     for c in store.list_candidates(job_id, ["GREETED", "CHATTING"]):
         url = f"{MOCK_URL}/candidate/{c['externalId']}"
         try:
@@ -124,14 +138,14 @@ def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
                 store.message(c["id"], "OUT", ans, idem_key(c["externalId"], "itv", m["content"]))
                 store.set_status(c["id"], "INTERVIEW")
                 stats["interest"] += 1
-            else:   # SENSITIVE / OTHER → 转人工
+            else:
                 store.escalate(c["id"]); stats["escalated"] += 1
                 print(f"[chat] {c['name']} 转人工处理")
             throttle(0.5, 1.0)
         ckpt.set_cursor(c["externalId"], len(msgs))
 
-    stats["print_fallbacks"] = browser.stats["print_fallbacks"]
-    stats["visual_fallbacks"] = browser.stats["visual_fallbacks"]
-    stats["send_retries"] = browser.stats["send_retries"]
-    stats["llm_fallbacks"] = getattr(llm, "fallbacks", 0)
-    return stats
+
+def run_pipeline(job, llm, browser, store, ckpt, stats, task_id):
+    screen_phase(job, llm, browser, store, ckpt, stats, task_id)
+    engage_phase(job, llm, browser, store, ckpt, stats, task_id)
+    return merge_stats(stats, browser, llm)

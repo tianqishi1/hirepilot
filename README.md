@@ -24,6 +24,24 @@ Spring Boot 3 (:8080)  <-REST->  Python Agent Worker  <-Playwright->  Mock 招�
 - Python 3.12+：pip install -r worker/requirements.txt 然后 playwright install chromium
 - Docker（跑 Java 后台用；不装也能玩 standalone 模式）
 
+### 0.5 Web 界面（推荐日常使用）
+
+三个服务就绪后（后台容器 + Mock站 + Worker守护），浏览器打开 **http://127.0.0.1:8080** ：
+
+    docker run -d --name hirepilot-backend -p 8080:8080 hirepilot-backend
+    python mock-site/app.py
+    python worker/main.py --serve        # 守护模式：接收页面按钮派发的任务
+
+页面操作闭环：
+1. 右上「＋ 新职位」填 JD/硬条件/FAQ 知识库（或直接用种子职位）
+2. 点「筛选简历」→ Agent 后台执行，审核队列实时出现卡片（评分+理由+风险+拟发送话术）
+3. 逐条审批：话术可改写后「批准」，或「否决」
+4. 点「执行触达与回复」→ 自动发送+FAQ应答+约面/转人工
+5. 「候选人」页点行看详情：技能 chips、评分理由、简历原文、带意图标注的聊天记录
+6. 「运行记录」看每次任务统计；「重置」清空本职位重来
+
+Worker 在线状态见 header 绿点；离线时运行按钮禁用并提示启动命令。
+界面截图见 docs/ui-1-reviews.png ~ ui-4-runs.png；UI 自动化验收脚本 scripts/ui_test.py。
 ### 1. 起 Mock 招聘站
     python mock-site/app.py        # http://127.0.0.1:9000
 

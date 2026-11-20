@@ -14,8 +14,46 @@ from backend_client import build_store
 from browser import Browser
 from config import OUT
 from llm import build_llm
-from pipeline import new_stats, run_pipeline
+from pipeline import new_stats, run_pipeline, screen_phase, engage_phase, merge_stats
 from stability import Checkpoint
+
+
+def serve(args):
+    """守护模式：UI 点按钮 → 后台排队 → 这里领取执行。"""
+    from backend_client import BackendClient
+    if not BackendClient.probe():
+        print("[serve] 后台不可达，serve 模式需要 Spring Boot 后台")
+        return
+    store = BackendClient()
+    llm = build_llm()
+    browser = Browser(headless=not args.headful)
+    print(f"[serve] Worker 已上线，轮询运行请求… ({args.worker_id})")
+    try:
+        while True:
+            store.ping(args.worker_id)
+            run = store.claim_run()
+            if run is None:
+                time.sleep(3)
+                continue
+            job = store.get_job(run["jobId"])
+            ckpt = Checkpoint(str(run["jobId"]))
+            stats = new_stats()
+            print(f"[serve] 领取运行 #{run['id']} kind={run['kind']} job={run['jobId']}")
+            try:
+                if run["kind"] == "SCREEN":
+                    screen_phase(job, llm, browser, store, ckpt, stats, run["id"])
+                else:
+                    engage_phase(job, llm, browser, store, ckpt, stats, run["id"])
+                merge_stats(stats, browser, llm)
+                store.finish_run(run["id"], "DONE", stats)
+                print(f"[serve] 运行 #{run['id']} 完成")
+            except Exception as e:
+                store.finish_run(run["id"], "FAILED", stats, repr(e))
+                print(f"[serve] 运行 #{run['id']} 失败: {e!r}")
+    except KeyboardInterrupt:
+        print("[serve] 退出")
+    finally:
+        browser.close()
 
 
 def main():
@@ -27,7 +65,11 @@ def main():
     ap.add_argument("--fresh", action="store_true", help="清除断点，从头跑")
     ap.add_argument("--standalone", action="store_true", help="强制本地模式，不连后台")
     ap.add_argument("--reset", action="store_true", help="重开一局：清空后台该职位数据(开发用)")
+    ap.add_argument("--serve", action="store_true", help="守护模式：轮询后台运行请求，供 UI 按钮驱动")
     args = ap.parse_args()
+    if args.serve:
+        serve(args)
+        return
 
     if args.standalone:
         from backend_client import LocalStore

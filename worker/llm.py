@@ -129,6 +129,7 @@ class ApiLLM(MockLLM):
     def greet(self, profile: dict, job: dict) -> str:
         def call():
             sys = (f"你是招聘顾问。写一条≤120字的个性化打招呼：引用候选人1-2个真实亮点+职位卖点，风格：{job.get('greetingStyle','专业简洁')}。"
+                   "红线：不得承诺薪资数字、职级、录用等任何知识库外条件；薪资只可引导候选人查看FAQ或面议。"
                    f"结尾必须附：{AUTO_DECL}")
             return self._chat(sys, json.dumps({"profile": profile, "job": job["title"]}, ensure_ascii=False)).strip()
         return self._safe(call, super().greet, profile, job)

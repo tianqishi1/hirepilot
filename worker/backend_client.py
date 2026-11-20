@@ -78,6 +78,14 @@ class BackendClient:
         self.http.post("/api/worker/incidents", json={"taskRunId": task_id, "kind": kind, "detail": detail, "screenshotPath": shot}).raise_for_status()
     def reset(self, job_id):
         self.http.post("/api/dev/reset", params={"jobId": job_id}).raise_for_status()
+    def claim_run(self):
+        r = self.http.post("/api/runs/claim")
+        r.raise_for_status()
+        return r.json() if r.status_code == 200 else None
+    def finish_run(self, run_id, state, stats, error=None):
+        self.http.post(f"/api/runs/{run_id}/finish", json={"state": state, "stats": json.dumps(stats, ensure_ascii=False), "error": error}).raise_for_status()
+    def ping(self, worker_id):
+        self.http.post("/api/worker/ping", json={"workerId": worker_id}).raise_for_status()
 
 
 class LocalStore:
