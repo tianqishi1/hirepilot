@@ -40,8 +40,19 @@ Spring Boot 3 (:8080)  <-REST->  Python Agent Worker  <-Playwright->  Mock 招�
 5. 「候选人」页点行看详情：技能 chips、评分理由、简历原文、带意图标注的聊天记录
 6. 「运行记录」看每次任务统计；「重置」清空本职位重来
 
-Worker 在线状态见 header 绿点；离线时运行按钮禁用并提示启动命令。
-界面截图见 docs/ui-1-reviews.png ~ ui-4-runs.png；UI 自动化验收脚本 scripts/ui_test.py。
+Worker 在线状态见侧边栏底部指示灯；离线时运行按钮禁用并提示启动命令。
+
+前端为 **Vue 3 + Vite + Element Plus** 单页应用（`frontend/`），构建产物落在
+`backend/src/main/resources/static/`，由 Spring Boot 同源 serving，无需额外前端服务器：
+
+    cd frontend
+    npm install
+    npm run build        # 产物 -> backend 静态资源；随后重建后端镜像即可
+    npm run dev          # 可选：开发模式 :5173，/api 自动代理到 :8080（热更新）
+
+注意：`mock-site/`（:9000）是 Agent 扫描用的模拟第三方招聘站，刻意保持简陋与动态 DOM，
+不属于产品界面，请勿将其与控制台（:8080）混淆。
+界面截图见 docs/ui-1-reviews.png ~ ui-4-runs.png；UI 自动化验收脚本 scripts/ui_test.py、scripts/ui_screenshot.py。
 ### 1. 起 Mock 招聘站
     python mock-site/app.py        # http://127.0.0.1:9000
 

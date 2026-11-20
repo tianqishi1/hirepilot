@@ -4,3 +4,5 @@ worker/out/
 backend/target/
 backend/build.log
 .env
+node_modules/
+frontend/dist/
